@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 import threading
 import tkinter as tk
 from pathlib import Path
@@ -7,8 +8,9 @@ from tkinter import filedialog, messagebox, ttk
 
 import imageio_ffmpeg
 import yt_dlp
-from mutagen.id3 import COMM, TALB, TDRC, TIT2, TPE1, ID3
+from mutagen.id3 import COMM, TALB, TDRC, TIT2, TPE1, ID3, TXXX
 from mutagen.mp3 import MP3
+
 
 APP_NAME = "CoverRIP ✝️"
 AUTHOR = "Dr.Sopes"
@@ -33,12 +35,18 @@ def looks_like_youtube_url(text: str) -> bool:
     )
 
 
+def force_overwrite_name_from_url(previous_url: str, current_url: str, current_name: str) -> bool:
+    if not current_name.strip():
+        return True
+    return previous_url != current_url
+
+
 class CoverRIPApp:
     def __init__(self, root):
         self.root = root
         self.root.title(f"{APP_NAME} — {AUTHOR}")
-        self.root.geometry("920x660")
-        self.root.minsize(820, 600)
+        self.root.geometry("940x720")
+        self.root.minsize(840, 640)
 
         self.settings = self.load_settings()
 
@@ -58,6 +66,13 @@ class CoverRIPApp:
         self.meta_year_var = tk.StringVar(value="")
         self.meta_comment_var = tk.StringVar(
             value=self.settings.get("last_comment", "Downloaded with CoverRIP")
+        )
+
+        self.replaygain_enabled_var = tk.BooleanVar(
+            value=self.settings.get("replaygain_enabled", True)
+        )
+        self.replaygain_target_var = tk.StringVar(
+            value=str(self.settings.get("replaygain_target_db", "95.0"))
         )
 
         self.ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
@@ -82,6 +97,8 @@ class CoverRIPApp:
         data = {
             "last_folder": self.folder_var.get().strip(),
             "last_comment": self.meta_comment_var.get().strip(),
+            "replaygain_enabled": self.replaygain_enabled_var.get(),
+            "replaygain_target_db": self.replaygain_target_var.get().strip(),
         }
         try:
             SETTINGS_FILE.write_text(
@@ -100,7 +117,7 @@ class CoverRIPApp:
 
         subtitle = ttk.Label(
             main,
-            text="Download YouTube audio to MP3 with cover art and editable metadata",
+            text="Download YouTube audio to MP3 with cover art, editable metadata, and ReplayGain tags",
             foreground="#555555"
         )
         subtitle.pack(anchor="w", pady=(0, 12))
@@ -140,10 +157,10 @@ class CoverRIPApp:
         source_box.pack(fill="x", pady=(0, 10))
 
         ttk.Label(source_box, text="Title").grid(row=0, column=0, sticky="w")
-        ttk.Label(source_box, textvariable=self.source_title_var, wraplength=650).grid(row=0, column=1, sticky="w", padx=(8, 0))
+        ttk.Label(source_box, textvariable=self.source_title_var, wraplength=680).grid(row=0, column=1, sticky="w", padx=(8, 0))
 
         ttk.Label(source_box, text="Channel").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ttk.Label(source_box, textvariable=self.source_channel_var, wraplength=650).grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
+        ttk.Label(source_box, textvariable=self.source_channel_var, wraplength=680).grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
 
         ttk.Label(source_box, text="Duration").grid(row=2, column=0, sticky="w", pady=(6, 0))
         ttk.Label(source_box, textvariable=self.source_duration_var).grid(row=2, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
@@ -170,6 +187,19 @@ class CoverRIPApp:
 
         meta_box.columnconfigure(1, weight=1)
 
+        rg_box = ttk.LabelFrame(main, text="ReplayGain", padding=10)
+        rg_box.pack(fill="x", pady=(0, 10))
+
+        ttk.Checkbutton(
+            rg_box,
+            text="Write ReplayGain track tags",
+            variable=self.replaygain_enabled_var
+        ).grid(row=0, column=0, sticky="w")
+
+        ttk.Label(rg_box, text="Target volume (dB)").grid(row=0, column=1, sticky="e", padx=(20, 8))
+        ttk.Entry(rg_box, textvariable=self.replaygain_target_var, width=8).grid(row=0, column=2, sticky="w")
+        ttk.Label(rg_box, text="Default: 95.0").grid(row=0, column=3, sticky="w", padx=(8, 0))
+
         actions = ttk.Frame(main)
         actions.pack(fill="x", pady=(2, 8))
 
@@ -189,6 +219,7 @@ class CoverRIPApp:
         self.url_var.trace_add("write", self.on_url_changed)
         self.folder_var.trace_add("write", lambda *args: self.on_settings_related_change())
         self.output_name_var.trace_add("write", lambda *args: self.update_final_path_preview())
+        self.replaygain_target_var.trace_add("write", lambda *args: self.save_settings())
 
     def on_settings_related_change(self):
         self.update_final_path_preview()
@@ -326,10 +357,16 @@ class CoverRIPApp:
                 self.meta_artist_var.set(meta_artist)
                 self.meta_album_var.set(meta_album)
                 self.meta_year_var.set(meta_year)
+
                 if not self.meta_comment_var.get().strip():
                     self.meta_comment_var.set("Downloaded with CoverRIP")
 
-                if not self.output_name_var.get().strip() or force_overwrite_name_from_url(self.last_analyzed_url, url, self.output_name_var.get().strip()):
+                if (
+                    not self.output_name_var.get().strip()
+                    or force_overwrite_name_from_url(
+                        self.last_analyzed_url, url, self.output_name_var.get().strip()
+                    )
+                ):
                     self.output_name_var.set(default_filename)
 
                 self.update_final_path_preview()
@@ -382,7 +419,7 @@ class CoverRIPApp:
         elif status == "finished":
             self.set_status("Converting to MP3 and embedding thumbnail...")
 
-    def write_metadata(self, mp3_path: Path):
+    def write_metadata(self, mp3_path: Path, metadata: dict):
         audio = MP3(mp3_path)
         if audio.tags is None:
             audio.add_tags()
@@ -396,11 +433,11 @@ class CoverRIPApp:
         tags.delall("TDRC")
         tags.delall("COMM")
 
-        title = self.meta_title_var.get().strip()
-        artist = self.meta_artist_var.get().strip()
-        album = self.meta_album_var.get().strip()
-        year = self.meta_year_var.get().strip()
-        comment = self.meta_comment_var.get().strip()
+        title = metadata.get("title", "").strip()
+        artist = metadata.get("artist", "").strip()
+        album = metadata.get("album", "").strip()
+        year = metadata.get("year", "").strip()
+        comment = metadata.get("comment", "").strip()
 
         if title:
             tags.add(TIT2(encoding=3, text=title))
@@ -413,6 +450,66 @@ class CoverRIPApp:
         if comment:
             tags.add(COMM(encoding=3, lang="eng", desc="", text=comment))
 
+        tags.save(v2_version=3)
+
+    def set_txxx(self, tags, desc: str, value: str):
+        current = [f for f in tags.getall("TXXX") if f.desc.lower() != desc.lower()]
+        current.append(TXXX(encoding=0, desc=desc, text=[value]))
+        tags.setall("TXXX", current)
+
+    def measure_replaygain(self, mp3_path: Path, target_db: float):
+        cmd = [
+            self.ffmpeg_exe,
+            "-hide_banner",
+            "-i", str(mp3_path),
+            "-af", "loudnorm=I=-18:TP=-1.5:LRA=11:print_format=json",
+            "-f", "null",
+            "-"
+        ]
+
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        stderr = proc.stderr
+        start = stderr.rfind("{")
+        end = stderr.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise RuntimeError("Could not parse loudness analysis output.")
+
+        data = json.loads(stderr[start:end + 1])
+
+        input_i = float(data["input_i"])
+        input_tp = float(data["input_tp"])
+
+        # Practical mapping so the UI can keep an MP3Gain-style target.
+        desired_lufs = -18.0 + (target_db - 89.0)
+        gain_db = desired_lufs - input_i
+
+        peak_linear = 10 ** (input_tp / 20.0)
+        if peak_linear < 0:
+            peak_linear = 0.0
+
+        return gain_db, peak_linear
+
+    def write_replaygain_tags(self, mp3_path: Path, enabled: bool, target_value: str):
+        if not enabled:
+            return
+
+        try:
+            target_db = float(target_value.replace(",", ".").strip())
+        except ValueError:
+            raise RuntimeError("ReplayGain target must be numeric, for example 95.0")
+
+        self.set_status("Measuring loudness for ReplayGain...")
+        gain_db, peak_linear = self.measure_replaygain(mp3_path, target_db)
+
+        tags = ID3(mp3_path)
+        self.set_txxx(tags, "replaygain_track_gain", f"{gain_db:+.2f} dB")
+        self.set_txxx(tags, "replaygain_track_peak", f"{peak_linear:.6f}")
         tags.save(v2_version=3)
 
     def start_download(self):
@@ -436,19 +533,32 @@ class CoverRIPApp:
             messagebox.showwarning("Missing file name", "Enter the final file name.")
             return
 
+        metadata = {
+            "title": self.meta_title_var.get(),
+            "artist": self.meta_artist_var.get(),
+            "album": self.meta_album_var.get(),
+            "year": self.meta_year_var.get(),
+            "comment": self.meta_comment_var.get(),
+        }
+
+        rg_enabled = self.replaygain_enabled_var.get()
+        rg_target = self.replaygain_target_var.get().strip()
+
         self.save_settings()
         self.toggle_download(False)
         self.set_status("Starting download...")
 
-        threading.Thread(target=self.download_audio, daemon=True).start()
+        threading.Thread(
+            target=self.download_audio,
+            args=(url, folder, filename, metadata, rg_enabled, rg_target),
+            daemon=True
+        ).start()
 
-    def download_audio(self):
+    def download_audio(self, url, folder_str, filename, metadata, rg_enabled, rg_target):
         try:
-            url = self.url_var.get().strip()
-            folder = Path(self.folder_var.get().strip())
+            folder = Path(folder_str)
             folder.mkdir(parents=True, exist_ok=True)
 
-            filename = self.output_name_var.get().strip()
             if filename.lower().endswith(".mp3"):
                 filename = filename[:-4]
 
@@ -495,7 +605,9 @@ class CoverRIPApp:
                 final_mp3 = matches[0]
 
             self.set_status("Writing edited metadata...")
-            self.write_metadata(final_mp3)
+            self.write_metadata(final_mp3, metadata)
+
+            self.write_replaygain_tags(final_mp3, rg_enabled, rg_target)
 
             self.set_status("Done.")
             self.root.after(
@@ -515,12 +627,6 @@ class CoverRIPApp:
     def on_close(self):
         self.save_settings()
         self.root.destroy()
-
-
-def force_overwrite_name_from_url(previous_url: str, current_url: str, current_name: str) -> bool:
-    if not current_name.strip():
-        return True
-    return previous_url != current_url
 
 
 if __name__ == "__main__":
