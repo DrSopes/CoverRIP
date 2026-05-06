@@ -45,8 +45,8 @@ class CoverRIPApp:
     def __init__(self, root):
         self.root = root
         self.root.title(f"{APP_NAME} — {AUTHOR}")
-        self.root.geometry("940x720")
-        self.root.minsize(840, 640)
+        self.root.geometry("1100x720")
+        self.root.minsize(980, 640)
 
         self.settings = self.load_settings()
 
@@ -113,17 +113,31 @@ class CoverRIPApp:
         main.pack(fill="both", expand=True)
 
         title = ttk.Label(main, text=APP_NAME, font=("Segoe UI", 16, "bold"))
-        title.pack(anchor="w")
+        title.grid(row=0, column=0, columnspan=2, sticky="w")
 
         subtitle = ttk.Label(
             main,
             text="Download YouTube audio to MP3 with cover art, editable metadata, and ReplayGain tags",
             foreground="#555555"
         )
-        subtitle.pack(anchor="w", pady=(0, 12))
+        subtitle.grid(row=1, column=0, columnspan=2, sticky="w", pady=(0, 12))
 
-        url_box = ttk.LabelFrame(main, text="Source", padding=10)
-        url_box.pack(fill="x", pady=(0, 10))
+        main.columnconfigure(0, weight=1, uniform="cols")
+        main.columnconfigure(1, weight=1, uniform="cols")
+        main.rowconfigure(2, weight=1)
+
+        left_col = ttk.Frame(main)
+        left_col.grid(row=2, column=0, sticky="nsew", padx=(0, 8))
+        left_col.columnconfigure(0, weight=1)
+
+        right_col = ttk.Frame(main)
+        right_col.grid(row=2, column=1, sticky="nsew", padx=(8, 0))
+        right_col.columnconfigure(0, weight=1)
+
+        # LEFT COLUMN
+        url_box = ttk.LabelFrame(left_col, text="Source", padding=10)
+        url_box.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        url_box.columnconfigure(1, weight=1)
 
         ttk.Label(url_box, text="YouTube URL").grid(row=0, column=0, sticky="w")
         self.url_entry = ttk.Entry(url_box, textvariable=self.url_var)
@@ -133,10 +147,9 @@ class CoverRIPApp:
         ttk.Button(url_box, text="Paste", command=self.paste_clipboard).grid(row=0, column=2, sticky="ew")
         ttk.Button(url_box, text="Refresh", command=lambda: self.start_analyze(force=True)).grid(row=0, column=3, sticky="ew", padx=(8, 0))
 
-        url_box.columnconfigure(1, weight=1)
-
-        dest_box = ttk.LabelFrame(main, text="Destination", padding=10)
-        dest_box.pack(fill="x", pady=(0, 10))
+        dest_box = ttk.LabelFrame(left_col, text="Destination", padding=10)
+        dest_box.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+        dest_box.columnconfigure(1, weight=1)
 
         ttk.Label(dest_box, text="Folder").grid(row=0, column=0, sticky="w")
         self.folder_entry = ttk.Entry(dest_box, textvariable=self.folder_var)
@@ -147,28 +160,45 @@ class CoverRIPApp:
         self.output_entry = ttk.Entry(dest_box, textvariable=self.output_name_var)
         self.output_entry.grid(row=1, column=1, columnspan=2, sticky="ew", padx=(8, 0), pady=(10, 0))
 
-        ttk.Label(dest_box, text="Final path preview").grid(row=2, column=0, sticky="w", pady=(10, 0))
-        self.final_path_label = ttk.Label(dest_box, text="", foreground="#004a99")
+        ttk.Label(dest_box, text="Final path preview").grid(row=2, column=0, sticky="nw", pady=(10, 0))
+        self.final_path_label = ttk.Label(dest_box, text="", foreground="#004a99", wraplength=430)
         self.final_path_label.grid(row=2, column=1, columnspan=2, sticky="w", padx=(8, 0), pady=(10, 0))
 
-        dest_box.columnconfigure(1, weight=1)
+        actions_box = ttk.LabelFrame(left_col, text="Actions", padding=10)
+        actions_box.grid(row=2, column=0, sticky="ew", pady=(0, 10))
+        actions_box.columnconfigure(0, weight=1)
+        actions_box.columnconfigure(1, weight=1)
 
-        source_box = ttk.LabelFrame(main, text="Detected from YouTube", padding=10)
-        source_box.pack(fill="x", pady=(0, 10))
+        self.download_btn = ttk.Button(actions_box, text="Download MP3", command=self.start_download)
+        self.download_btn.grid(row=0, column=0, sticky="ew", padx=(0, 6))
 
-        ttk.Label(source_box, text="Title").grid(row=0, column=0, sticky="w")
-        ttk.Label(source_box, textvariable=self.source_title_var, wraplength=680).grid(row=0, column=1, sticky="w", padx=(8, 0))
+        ttk.Button(actions_box, text="Exit", command=self.on_close).grid(row=0, column=1, sticky="ew", padx=(6, 0))
 
-        ttk.Label(source_box, text="Channel").grid(row=1, column=0, sticky="w", pady=(6, 0))
-        ttk.Label(source_box, textvariable=self.source_channel_var, wraplength=680).grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
+        status_box = ttk.LabelFrame(left_col, text="Status", padding=10)
+        status_box.grid(row=3, column=0, sticky="nsew")
+        status_box.columnconfigure(0, weight=1)
+        left_col.rowconfigure(3, weight=1)
+
+        ttk.Label(status_box, textvariable=self.status_var, foreground="#005bbb", wraplength=430).grid(row=0, column=0, sticky="nw")
+
+        # RIGHT COLUMN
+        source_box = ttk.LabelFrame(right_col, text="Detected from YouTube", padding=10)
+        source_box.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        source_box.columnconfigure(1, weight=1)
+
+        ttk.Label(source_box, text="Title").grid(row=0, column=0, sticky="nw")
+        ttk.Label(source_box, textvariable=self.source_title_var, wraplength=430).grid(row=0, column=1, sticky="w", padx=(8, 0))
+
+        ttk.Label(source_box, text="Channel").grid(row=1, column=0, sticky="nw", pady=(6, 0))
+        ttk.Label(source_box, textvariable=self.source_channel_var, wraplength=430).grid(row=1, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
 
         ttk.Label(source_box, text="Duration").grid(row=2, column=0, sticky="w", pady=(6, 0))
         ttk.Label(source_box, textvariable=self.source_duration_var).grid(row=2, column=1, sticky="w", padx=(8, 0), pady=(6, 0))
 
-        source_box.columnconfigure(1, weight=1)
-
-        meta_box = ttk.LabelFrame(main, text="Editable metadata before saving", padding=10)
-        meta_box.pack(fill="both", expand=True, pady=(0, 10))
+        meta_box = ttk.LabelFrame(right_col, text="Editable metadata before saving", padding=10)
+        meta_box.grid(row=1, column=0, sticky="nsew", pady=(0, 10))
+        meta_box.columnconfigure(1, weight=1)
+        right_col.rowconfigure(1, weight=1)
 
         ttk.Label(meta_box, text="Title").grid(row=0, column=0, sticky="w")
         ttk.Entry(meta_box, textvariable=self.meta_title_var).grid(row=0, column=1, sticky="ew", padx=(8, 0), pady=4)
@@ -185,34 +215,22 @@ class CoverRIPApp:
         ttk.Label(meta_box, text="Comment").grid(row=4, column=0, sticky="w")
         ttk.Entry(meta_box, textvariable=self.meta_comment_var).grid(row=4, column=1, sticky="ew", padx=(8, 0), pady=4)
 
-        meta_box.columnconfigure(1, weight=1)
-
-        rg_box = ttk.LabelFrame(main, text="ReplayGain", padding=10)
-        rg_box.pack(fill="x", pady=(0, 10))
+        rg_box = ttk.LabelFrame(right_col, text="ReplayGain", padding=10)
+        rg_box.grid(row=2, column=0, sticky="ew")
+        rg_box.columnconfigure(1, weight=1)
 
         ttk.Checkbutton(
             rg_box,
             text="Write ReplayGain track tags",
             variable=self.replaygain_enabled_var
-        ).grid(row=0, column=0, sticky="w")
+        ).grid(row=0, column=0, columnspan=2, sticky="w")
 
-        ttk.Label(rg_box, text="Target volume (dB)").grid(row=0, column=1, sticky="e", padx=(20, 8))
-        ttk.Entry(rg_box, textvariable=self.replaygain_target_var, width=8).grid(row=0, column=2, sticky="w")
-        ttk.Label(rg_box, text="Default: 95.0").grid(row=0, column=3, sticky="w", padx=(8, 0))
-
-        actions = ttk.Frame(main)
-        actions.pack(fill="x", pady=(2, 8))
-
-        self.download_btn = ttk.Button(actions, text="Download MP3", command=self.start_download)
-        self.download_btn.pack(side="left")
-
-        ttk.Button(actions, text="Exit", command=self.on_close).pack(side="right")
-
-        ttk.Separator(main).pack(fill="x", pady=8)
-        ttk.Label(main, text="Status").pack(anchor="w")
-        ttk.Label(main, textvariable=self.status_var, foreground="#005bbb").pack(anchor="w", pady=(4, 0))
+        ttk.Label(rg_box, text="Target volume (dB)").grid(row=1, column=0, sticky="w", pady=(8, 0))
+        ttk.Entry(rg_box, textvariable=self.replaygain_target_var, width=10).grid(row=1, column=1, sticky="w", pady=(8, 0))
+        ttk.Label(rg_box, text="Default: 95.0").grid(row=1, column=2, sticky="w", padx=(8, 0), pady=(8, 0))
 
         self.update_final_path_preview()
+
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 
     def _bind_events(self):
@@ -485,7 +503,6 @@ class CoverRIPApp:
         input_i = float(data["input_i"])
         input_tp = float(data["input_tp"])
 
-        # Practical mapping so the UI can keep an MP3Gain-style target.
         desired_lufs = -18.0 + (target_db - 89.0)
         gain_db = desired_lufs - input_i
 
@@ -511,6 +528,26 @@ class CoverRIPApp:
         self.set_txxx(tags, "replaygain_track_gain", f"{gain_db:+.2f} dB")
         self.set_txxx(tags, "replaygain_track_peak", f"{peak_linear:.6f}")
         tags.save(v2_version=3)
+
+    def reset_form_after_download(self):
+        self.url_var.set("")
+        self.source_title_var.set("")
+        self.source_channel_var.set("")
+        self.source_duration_var.set("")
+        self.output_name_var.set("")
+
+        self.meta_title_var.set("")
+        self.meta_artist_var.set("")
+        self.meta_album_var.set("")
+        self.meta_year_var.set("")
+        self.meta_comment_var.set(self.settings.get("last_comment", "Downloaded with CoverRIP"))
+
+        self.last_analyzed_url = ""
+        self.analysis_token += 1
+        self.update_final_path_preview()
+        self.set_status("Ready for a new download.")
+
+        self.root.after(50, self.url_entry.focus_set)
 
     def start_download(self):
         url = self.url_var.get().strip()
@@ -609,14 +646,15 @@ class CoverRIPApp:
 
             self.write_replaygain_tags(final_mp3, rg_enabled, rg_target)
 
-            self.set_status("Done.")
-            self.root.after(
-                0,
-                lambda: messagebox.showinfo(
+            def done_message():
+                messagebox.showinfo(
                     "Completed",
                     f"Saved file:\n{final_mp3.name}\n\nFolder:\n{final_mp3.parent}"
                 )
-            )
+                self.reset_form_after_download()
+
+            self.set_status("Done.")
+            self.root.after(0, done_message)
 
         except Exception as e:
             self.set_status("Download failed.")
