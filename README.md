@@ -61,7 +61,7 @@ pip install -r requirements.txt
 ## Run
 
 ```bash
-python youtube_mp3_gui.py
+python CoverRIP.py
 ```
 
 ## Workflow
@@ -84,7 +84,7 @@ The metadata fields are written again after the MP3 is created so your manual ed
 
 ```text
 .
-├── youtube_mp3_gui.py
+├── CoverRIP.py
 ├── requirements.txt
 ├── README.md
 └── LICENSE
