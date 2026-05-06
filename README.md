@@ -101,4 +101,4 @@ The current repository files you shared include `CoverRIP.py` and `requirements.
 
 ## License
 
-This project is licensed under the MIT License. If your repository already includes a `LICENSE` file, GitHub will surface it alongside the README as part of the repository metadata.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
