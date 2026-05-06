@@ -1,113 +1,95 @@
-CoverRIP
+# CoverRIP ✝️
 
-CoverRIP is a Python desktop app with a graphical interface that downloads the best available audio from a YouTube video, converts it to MP3, and embeds the video thumbnail as album art.
+**CoverRIP ✝️** is a Python desktop app with a graphical interface that downloads the best available audio from a YouTube video, converts it to MP3, embeds the thumbnail as cover art, and lets you review or edit the final file name and metadata before saving.
 
-Author
+Author: **Dr.Sopes**
 
-Dr.Sopes
-Features
+## Features
 
-    Paste a YouTube URL into a desktop GUI
+- Paste a YouTube URL and trigger automatic analysis
+- Choose the destination folder before downloading
+- Edit the final output file name manually
+- Review and edit metadata before saving
+- Convert the best available audio stream to MP3
+- Embed the YouTube thumbnail as album art
+- Remember the last destination folder and comment field
+- Work without a system-wide FFmpeg installation
 
-    Choose the destination folder before downloading
+## Requirements
 
-    Download the best available audio stream
+- Python 3.10+
+- Windows, macOS, or Linux
+- Internet connection
 
-    Convert audio to MP3
-
-    Embed the YouTube thumbnail as cover art
-
-    Work without a system-wide FFmpeg installation
-
-Tech Stack
-
-    Python
-
-    Tkinter for the GUI
-
-    yt-dlp for extracting and downloading media
-
-    imageio-ffmpeg for bundled FFmpeg access
-
-Requirements
-
-    Python 3
-
-    Internet connection
-
-    Windows, macOS, or Linux
-
-Installation
+## Installation
 
 Clone the repository:
 
-bash
-git clone https://github.com/your-username/coverrip.git
-cd coverrip
+```bash
+git clone https://github.com/DrSopes/CoverRIP.git
+cd CoverRIP
+```
 
 Create and activate a virtual environment (recommended):
-Windows
 
-bash
+### Windows
+
+```bash
 python -m venv .venv
 .venv\Scripts\activate
+```
 
-macOS / Linux
+### macOS / Linux
 
-bash
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
+```
 
-Install dependencies:
+Install the dependencies:
 
-bash
+```bash
 pip install -r requirements.txt
+```
 
-Run the App
+## Dependencies
 
-bash
-python CoverRIP.py
+- `yt-dlp`
+- `imageio-ffmpeg`
+- `mutagen`
 
-How It Works
+## Run
 
-    Paste a YouTube video URL.
+```bash
+python youtube_mp3_gui.py
+```
 
-    Choose the folder where the MP3 file should be saved.
+## Workflow
 
-    Click Download MP3.
+1. Paste a YouTube URL.
+2. Wait for the app to analyze the URL automatically.
+3. Review the detected title, channel, and duration.
+4. Edit the output file name if needed.
+5. Edit metadata such as title, artist, album, year, or comment.
+6. Choose the destination folder.
+7. Download the final MP3.
 
-    The app downloads the best available audio.
+## Notes
 
-    The audio is converted to MP3.
+The app uses `imageio-ffmpeg` so users do not need to install FFmpeg manually at the system level.
 
-    The video thumbnail is embedded as album art.
+The metadata fields are written again after the MP3 is created so your manual edits override the default values detected from YouTube.
 
-Project Structure
+## Files
 
-text
+```text
 .
-├── CoverRIP.py
+├── youtube_mp3_gui.py
 ├── requirements.txt
-└── README.md
+├── README.md
+└── LICENSE
+```
 
-Dependency Notes
+## License
 
-tkinter is part of the Python standard library in most Python installations, so it is usually not included in requirements.txt.
-
-imageio-ffmpeg is used so the application can work without asking users to manually install FFmpeg or configure environment variables.
-Troubleshooting
-The app does not open
-
-Make sure Python is installed correctly and that tkinter is available in your Python build.
-Download fails on some videos
-
-Some videos may be unavailable due to regional restrictions, age restrictions, removed content, or platform-side changes.
-Thumbnail is not embedded
-
-The thumbnail embedding step depends on successful post-processing. Updating yt-dlp and reinstalling dependencies often fixes this.
-Legal Notice
-
-Use this project only for content you have the right to download. Users are responsible for complying with YouTube's terms and applicable copyright laws.
-License
-
-This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the `LICENSE` file for details.
